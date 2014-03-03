@@ -15,16 +15,16 @@ typedef NS_OPTIONS(NSUInteger, MCSwipeTableViewCellState) {
 
     /** No state has been triggered. */
     MCSwipeTableViewCellStateNone = 0,
-    
+
     /** 1st state triggered during a Left -> Right swipe. */
     MCSwipeTableViewCellState1 = (1 << 0),
-    
+
     /** 2nd state triggered during a Left -> Right swipe. */
     MCSwipeTableViewCellState2 = (1 << 1),
 
     /** 1st state triggered during a Right -> Left swipe. */
     MCSwipeTableViewCellState3 = (1 << 2),
-    
+
     /** 2nd state triggered during a Right -> Left swipe. */
     MCSwipeTableViewCellState4 = (1 << 3)
 };
@@ -38,7 +38,9 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellMode) {
     MCSwipeTableViewCellModeExit,
 
     /** Upon swipe the cell if automatically swiped back to it's initial position. */
-    MCSwipeTableViewCellModeSwitch
+    MCSwipeTableViewCellModeSwitch,
+
+    MCSwipeTableViewCellModeReveal
 };
 
 /**
@@ -59,9 +61,9 @@ typedef void (^MCSwipeCompletionBlock)(MCSwipeTableViewCell *cell, MCSwipeTableV
 /** Delegate of `MCSwipeTableViewCell` */
 @property (nonatomic, assign) id <MCSwipeTableViewCellDelegate> delegate;
 
-/** 
+/**
  * Damping of the physical spring animation. Expressed in percent.
- * 
+ *
  * @discussion Only applied for version of iOS > 7.
  */
 @property (nonatomic, assign, readwrite) CGFloat damping;
