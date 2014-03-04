@@ -7,6 +7,7 @@
 //
 
 #import "MCSwipeTableViewCell.h"
+#import "TaskTableViewCell.h"
 
 static CGFloat const kMCStop1                       = 0.25; // Percentage limit to trigger the first action
 static CGFloat const kMCStop2                       = 0.75; // Percentage limit to trigger the second action
@@ -147,6 +148,7 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
 
     [self uninstallSwipingView];
     [self initDefaults];
+    [self showOriginalCell];
 }
 
 #pragma mark - View Manipulation
@@ -156,12 +158,16 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
         return;
     }
 
+    
+    
     // If the content view background is transparent we get the background color.
     BOOL isContentViewBackgroundClear = !self.contentView.backgroundColor;
     if (isContentViewBackgroundClear) {
         BOOL isBackgroundClear = [self.backgroundColor isEqual:[UIColor clearColor]];
         self.contentView.backgroundColor = isBackgroundClear ? [UIColor whiteColor] :self.backgroundColor;
     }
+    
+    [self hideOriginalCell];
 
     UIImage *contentViewScreenshotImage = [self imageWithView:self];
 
@@ -195,6 +201,26 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
 
     [_contentScreenshotView removeFromSuperview];
     _contentScreenshotView = nil;
+}
+
+- (void)hideOriginalCell {
+    // FHD
+    self.originalCellColor = self.backgroundColor;
+    self.backgroundColor = [UIColor clearColor];
+    //    [self setAlpha:0.0];
+//    NSLog(@"subviews %@", self.subviews);
+//    NSLog(@"content vie %@", self.contentView);
+//    [self.contentView setAlpha:0.0];
+    TaskTableViewCell *cell = (TaskTableViewCell *) self;
+    cell.textField.alpha = 0.0;
+
+}
+
+- (void)showOriginalCell {
+    self.backgroundColor = self.originalCellColor;
+    //    [self setAlpha:]
+    TaskTableViewCell *cell = (TaskTableViewCell *) self;
+    cell.textField.alpha = 1.0;
 }
 
 - (void)setViewOfSlidingView:(UIView *)slidingView {
@@ -266,6 +292,7 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
     NSTimeInterval animationDuration    = [self animationDurationWithVelocity:velocity];
     _direction                          = [self directionWithPercentage:percentage];
 
+
     if (state == UIGestureRecognizerStateBegan || state == UIGestureRecognizerStateChanged) {
         _dragging = YES;
 
@@ -312,16 +339,13 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
             [self moveWithDuration:animationDuration andDirection:_direction];
         }
 
-        else if (cellMode == MCSwipeTableViewCellModeReveal && _direction != MCSwipeTableViewCellDirectionCenter) {
-            NSLog(@"just waiting %u", _direction);
-
-//            [UIView animateWithDuration:0.8 delay:0 options:(UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction) animations:^{
-////                _contentScreenshotView.frame = frame;
-////                _slidingView.alpha = 0;
-//                [self slideViewWithPercentage:0.8 view:_activeView isDragging:self.shouldAnimateIcons];
-//            } completion:^(BOOL finished) {
-////                [self executeCompletionBlock];
-//            }];
+        else if (cellMode == MCSwipeTableViewCellModeReveal) {
+            percentage = -1.0 * percentage;
+            if (percentage > 0.35) {
+                [self swipeToPositionWithCompletion:0.9 completion:nil];
+            } else {
+                [self swipeToOriginWithCompletion:nil];
+            }
         }
 
         else {
@@ -564,13 +588,22 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
         }
     }
 
-    //CGSize activeViewSize = view.bounds.size;
-    CGSize activeViewSize = CGSizeMake(120, 60);
-    NSLog(@"frame %@ bounds %@", NSStringFromCGRect(view.frame), NSStringFromCGRect(view.bounds));
+    CGSize activeViewSize = view.bounds.size;
+
+    
+
     CGRect activeViewFrame = CGRectMake(position.x - activeViewSize.width / 2.0,
                                         position.y - activeViewSize.height / 2.0,
                                         activeViewSize.width,
                                         activeViewSize.height);
+    
+    if (activeViewSize.width > 320) {
+        activeViewSize = CGSizeMake(320, 60);
+        activeViewFrame = CGRectMake(position.x,
+                                     position.y - activeViewSize.height / 2.0,
+                                     activeViewSize.width,
+                                     activeViewSize.height);
+    }
 
     activeViewFrame = CGRectIntegral(activeViewFrame);
     _slidingView.frame = activeViewFrame;
@@ -629,6 +662,7 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
             _slidingView.alpha = 0;
             [self slideViewWithPercentage:0 view:_activeView isDragging:NO];
 
+            [self showOriginalCell];
         } completion:^(BOOL finished) {
 
             _isExited = NO;
@@ -652,7 +686,7 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
 
             // Setting back the color to the default.
             _colorIndicatorView.backgroundColor = self.defaultColor;
-
+            [self showOriginalCell];
         } completion:^(BOOL finished1) {
 
             [UIView animateWithDuration:kMCBounceDuration2 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
@@ -675,6 +709,74 @@ typedef NS_ENUM(NSUInteger, MCSwipeTableViewCellDirection) {
             }];
         }];
     }
+}
+
+- (void)swipeToPositionWithCompletion:(CGFloat)percentage completion:(void(^)(void))completion {
+    CGFloat bounceDistance = kMCBounceAmplitude * _currentPercentage;
+    
+//    if ([UIView.class respondsToSelector:@selector(animateWithDuration:delay:usingSpringWithDamping:initialSpringVelocity:options:animations:completion:)]) {
+    
+        [UIView animateWithDuration:_animationDuration delay:0.0 usingSpringWithDamping:_damping initialSpringVelocity:_velocity options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            
+            CGRect frame = _contentScreenshotView.frame;
+            frame.origin.x = -1 * frame.size.width + 20;
+//            frame.origin.x = -50;
+            _contentScreenshotView.frame = frame;
+            
+            // Clearing the indicator view
+//            _colorIndicatorView.backgroundColor = self.defaultColor;
+            
+//            _slidingView.alpha = 1.0;
+//            [self slideViewWithPercentage:percentage view:_activeView isDragging:NO];
+            CGRect slidingFrame = _slidingView.frame;
+            slidingFrame.origin.x = 20;
+            _slidingView.frame = slidingFrame;
+        } completion:^(BOOL finished) {
+            
+//            _isExited = NO;
+//            [self uninstallSwipingView];
+            
+//            if (completion) {
+//                completion();
+//            }
+        }];
+//    }
+    
+//    else {
+//        [UIView animateWithDuration:kMCBounceDuration1 delay:0 options:(UIViewAnimationOptionCurveEaseOut) animations:^{
+//            
+//            CGRect frame = _contentScreenshotView.frame;
+//            frame.origin.x = -bounceDistance;
+//            _contentScreenshotView.frame = frame;
+//            
+//            _slidingView.alpha = 0;
+//            [self slideViewWithPercentage:0 view:_activeView isDragging:NO];
+//            
+//            // Setting back the color to the default.
+//            _colorIndicatorView.backgroundColor = self.defaultColor;
+//            
+//        } completion:^(BOOL finished1) {
+//            
+//            [UIView animateWithDuration:kMCBounceDuration2 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+//                
+//                CGRect frame = _contentScreenshotView.frame;
+//                frame.origin.x = 0;
+//                _contentScreenshotView.frame = frame;
+//                
+//                // Clearing the indicator view
+//                _colorIndicatorView.backgroundColor = [UIColor clearColor];
+//                
+//            } completion:^(BOOL finished2) {
+//                
+//                _isExited = NO;
+//                [self uninstallSwipingView];
+//                
+//                if (completion) {
+//                    completion();
+//                }
+//            }];
+//        }];
+//    }
 }
 
 #pragma mark - Utilities
